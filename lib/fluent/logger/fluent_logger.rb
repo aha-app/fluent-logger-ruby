@@ -206,6 +206,7 @@ module Fluent
       rescue IO::WaitWritable
         # Ignore connection in process exceptions from the connect operation if being performed in a non-blocking manner
         raise unless @use_nonblock
+        @con
       end
 
       def connection_string
@@ -253,6 +254,7 @@ module Fluent
       end
 
       def write(msg)
+        p '[+] FLUENT-DEBUG: write called'
         begin
           data = to_msgpack(msg)
         rescue => e
@@ -284,6 +286,7 @@ module Fluent
             @pending = nil
             true
           rescue => e
+            p 'FLUENT-DEBUG: write error called'
             unless wait_writeable?(e)
               raise e
             end
@@ -298,6 +301,7 @@ module Fluent
             false
           end
         }
+        p '[-] FLUENT-DEBUG: write called'
       end
 
       def send_data(data)
@@ -342,10 +346,12 @@ module Fluent
       end
 
       def connect!
+        p '[+] FLUENT-DEBUG: connect called'
         create_socket!
         @con.sync = true
         @connect_error_history.clear
         @logged_reconnect_error = false
+        p '[-] FLUENT-DEBUG: connect called'
       rescue => e
         @connect_error_history << Time.now.to_i
         if @connect_error_history.size > RECONNECT_WAIT_MAX_COUNT
@@ -357,6 +363,7 @@ module Fluent
           @logged_reconnect_error = true
         end
 
+        p '[-] FLUENT-DEBUG: connect called (error raised)'
         raise e
       end
 
