@@ -156,15 +156,26 @@ module Fluent
               call_buffer_overflow_handler(@pending)
             end
           end
-          @con.close if connect?
+          @con.close if connected?
           @con = nil
           @pending = nil
         }
         self
       end
 
-      def connect?
+      def connected?
         @con && !@con.closed?
+      end
+
+      def connecting?
+        # Only report connecting status if using nonblocking sockets (a blocking socket can never be connecting)
+        return false if !@con || !@use_nonblock
+
+        optval = @con.getsockopt(Socket::SOL_TCP, 11)
+        optval.unpack('i')[0] == 2
+      rescue IOError
+        # The socket is closed, cannot being connecting
+        return false
       end
 
       def create_socket!
@@ -293,15 +304,16 @@ module Fluent
               call_buffer_overflow_handler(@pending)
               @pending = nil
             end
-            @con.close if connect?
-            @con = nil
+
+            @con.close if connected? && !connecting?
+            @con = nil unless connecting?
             false
           end
         }
       end
 
       def send_data(data)
-        unless connect?
+        unless connected? || connecting?
           connect!
         end
         if @use_nonblock
